@@ -218,6 +218,11 @@
     align-items: center;
     gap: 20px;
     box-shadow: 0 12px 34px rgba(16, 35, 63, 0.06);
+
+  max-width: 500px;     /* <--- Makes the white box narrower (e.g., change to 700px, 800px, etc.) */
+  width: 100%;          /* <--- Ensures it stays responsive on smaller screens */
+  margin: 0 auto;       /* <--- Centers the box horizontally if max-width is reduced */
+  min-height: 120px;
   }
   .support-icon {
     width: 48px;
