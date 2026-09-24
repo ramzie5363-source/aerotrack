@@ -174,7 +174,7 @@
 
   button.primary{
     background: var(--blue); color: #fff; border: none; font-weight: 650; font-size: 13.5px;
-    padding: 11px 20px; border-radius: 9px; cursor: pointer;
+    padding: 11px 20px; border-radius: 99px; cursor: pointer;
   }
   button.primary:disabled{ background: var(--border); color: var(--text-dim); cursor: not-allowed; }
   button.primary:not(:disabled):hover{ background: var(--blue-dark); }
@@ -208,6 +208,62 @@
   .empty-note{ font-size: 13px; color: var(--text-dim); }
   .actions-row{ display: flex; gap: 10px; align-items: center; }
 
+  /* ---------- support band ---------- */
+  .support-band {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 12px 34px rgba(16, 35, 63, 0.06);
+  }
+  .support-icon {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+  }
+  .support-copy {
+    flex: 1;
+  }
+  .support-copy h2 {
+    font-size: 18px;
+    margin-bottom: 4px;
+  }
+  .support-copy p {
+    font-size: 13.5px;
+    color: var(--text-dim);
+    margin: 0 0 10px;
+  }
+  .support-tags {
+    display: flex;
+    gap: 8px;
+  }
+  .support-tags span {
+    font-size: 11.5px;
+    font-weight: 600;
+    background: var(--sky);
+    color: var(--navy);
+    padding: 3px 8px;
+    border-radius: 6px;
+  }
+  .support-cta {
+    background: #ffdd00;
+    color: #10233f;
+    font-weight: 700;
+    font-size: 14px;
+    text-decoration: none;
+    padding: 12px 20px;
+    border-radius: 10px;
+    white-space: nowrap;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .support-cta:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+
   /* ---------- about / owner banner ---------- */
   .about{ padding: 10px 0 70px; }
   .about-banner{
@@ -233,6 +289,9 @@
     .hero-art{ width: 100%; }
     .how-grid{ grid-template-columns: repeat(2, 1fr); }
     .navlinks{ display: none; }
+    .support-band{ flex-direction: column; text-align: center; }
+    .support-tags{ justify-content: center; }
+    .support-cta{ width: 100%; text-align: center; }
     .about-banner{ flex-direction: column; text-align: center; }
     .about-text p{ max-width: none; }
   }
@@ -421,6 +480,27 @@
       </div>
 
     </div>
+  </div>
+</section>
+
+<section class="container" style="padding: 10px 0 50px;">
+  <div class="support-band">
+    <svg class="support-icon" viewBox="0 0 64 64" fill="none">
+      <path d="M14 24h30v16a10 10 0 01-10 10H24a10 10 0 01-10-10V24z" fill="#ffdd00" stroke="#10233f" stroke-width="2.4"/>
+      <path d="M44 28h4a7 7 0 010 14h-4" fill="none" stroke="#10233f" stroke-width="2.4"/>
+      <path d="M18 24c-1-4 2-5 1-9M27 24c-1-4 2-5 1-9M36 24c-1-4 2-5 1-9" stroke="#10233f" stroke-width="2.2" stroke-linecap="round"/>
+    </svg>
+    <div class="support-copy">
+      <h2>Buy Me A Coffee</h2>
+      <p>This converter is free to use and built in spare time. A coffee helps keep it maintained for conservation and field teams.</p>
+      <div class="support-tags">
+        <span>One-click support</span>
+        <span>No account needed</span>
+      </div>
+    </div>
+    <a class="support-cta" href="https://www.buymeacoffee.com/ramzie" target="_blank" rel="noopener">
+      ☕ Buy me a coffee
+    </a>
   </div>
 </section>
 
@@ -696,169 +776,3 @@
     if (dParts.length < 3 || dParts.some(isNaN)) return null;
     let y, m, d;
     if (dParts[0] > 31){ y = dParts[0]; m = dParts[1]; d = dParts[2]; }
-    else if (dParts[2] > 31){ y = dParts[2]; m = dParts[0]; d = dParts[1]; }
-    else { y = dParts[0]; m = dParts[1]; d = dParts[2]; }
-
-    const tMatch = String(timeStr).trim().match(/^(\d{1,2}):(\d{1,2}):(\d{1,2})/);
-    if (!tMatch) return null;
-    const h = parseInt(tMatch[1], 10), mi = parseInt(tMatch[2], 10), s = parseInt(tMatch[3], 10);
-    if ([y, m, d, h, mi, s].some(isNaN)) return null;
-
-    const dt = new Date(y, m - 1, d, h, mi, s, 0);
-    if (isNaN(dt.getTime())) return null;
-    return dt;
-  }
-
-  function formatGpxTime(dt){
-    return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}:${pad(dt.getSeconds())}Z`;
-  }
-
-  function escapeXml(s){
-    return String(s)
-      .split("&").join("&amp;")
-      .split("<").join("&lt;")
-      .split(">").join("&gt;")
-      .split('"').join("&quot;")
-      .split("'").join("&apos;");
-  }
-
-  const MARKED_VALUES = new Set(["1", "true", "yes"]);
-
-  function convertEntry(entry, applyPm, photoColName){
-    const { lat: latCol, lon: lonCol, date: dateCol, time: timeCol } = entry.mapping;
-    let photoCol = null;
-    if (photoColName){
-      photoCol = entry.headers.find(h => cleanName(h).includes(cleanKey(photoColName))) || null;
-    }
-
-    const trackPoints = [];
-    const waypoints = [];
-    let skipped = 0;
-    let waypointCount = 0;
-
-    for (const row of entry.rows){
-      const dt = parseDateTimeLocal(row[dateCol], row[timeCol]);
-      if (!dt){ skipped++; continue; }
-      if (applyPm && dt.getHours() <= 11){ dt.setHours(dt.getHours() + 12); }
-
-      const lat = parseFloat(row[latCol]);
-      const lon = parseFloat(row[lonCol]);
-      if (isNaN(lat) || isNaN(lon)){ skipped++; continue; }
-      if (lat === 0 && lon === 0){ skipped++; continue; }
-
-      const timeStr = formatGpxTime(dt);
-      trackPoints.push({ lat, lon, time: timeStr });
-
-      if (photoCol){
-        const raw = row[photoCol];
-        const norm = raw === undefined || raw === null ? "" : String(raw).trim().toLowerCase();
-        if (MARKED_VALUES.has(norm)){
-          waypointCount++;
-          waypoints.push({
-            lat, lon, time: timeStr,
-            name: `MARK_${waypointCount}`,
-            desc: `Observation marked at ${pad(dt.getHours())}:${pad(dt.getMinutes())}:${pad(dt.getSeconds())}`
-          });
-        }
-      }
-    }
-
-    const wptXml = waypoints.map(w =>
-      `  <wpt lat="${w.lat}" lon="${w.lon}">\n    <time>${w.time}</time>\n    <name>${escapeXml(w.name)}</name>\n    <desc>${escapeXml(w.desc)}</desc>\n  </wpt>`
-    ).join("\n");
-    const trkptXml = trackPoints.map(p =>
-      `      <trkpt lat="${p.lat}" lon="${p.lon}"><time>${p.time}</time></trkpt>`
-    ).join("\n");
-    const gpx = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Drone Track Converter" xmlns="http://www.topografix.com/GPX/1/1">\n${wptXml ? wptXml + "\n" : ""}  <trk>\n    <name>Drone Flight Path</name>\n    <trkseg>\n${trkptXml}\n    </trkseg>\n  </trk>\n</gpx>\n`;
-
-    return {
-      gpx,
-      stats: { total: entry.rows.length, valid: trackPoints.length, waypoints: waypointCount, skipped }
-    };
-  }
-
-  convertBtn.addEventListener("click", () => {
-    consoleBox.innerHTML = "";
-    outputsList.innerHTML = "";
-    outputStep.style.display = "none";
-    zipRow.style.display = "none";
-    setStatus("Converting…");
-
-    const applyPm = el("pmCorrection").checked;
-    const photoColName = photoColInput.value.trim();
-
-    let anyOutput = false;
-    files.forEach(entry => {
-      log(`converting ${entry.name} ...`, "l-dim");
-      try {
-        const result = convertEntry(entry, applyPm, photoColName);
-        entry.gpx = result.gpx;
-        entry.stats = result.stats;
-        if (result.stats.valid > 0){
-          log(`  done — ${result.stats.valid} points, ${result.stats.waypoints} waypoints, ${result.stats.skipped} rows skipped`, "l-ok");
-          anyOutput = true;
-        } else {
-          log(`  no usable points found — check the column mapping above`, "l-err");
-        }
-      } catch (err){
-        log(`  failed: ${err.message}`, "l-err");
-      }
-    });
-
-    setStatus(anyOutput ? "Done" : "Conversion failed", anyOutput ? "ready" : "err");
-
-    if (anyOutput){
-      outputStep.style.display = "";
-      files.filter(f => f.stats && f.stats.valid > 0).forEach(f => outputsList.appendChild(buildOutputRow(f)));
-      if (files.filter(f => f.gpx).length > 1) zipRow.style.display = "";
-
-      if (typeof gtag === 'function') {
-        gtag('event', 'file_conversion_success', {
-          'event_category': 'Tool Usage',
-          'file_count': files.length
-        });
-      }
-    }
-  });
-
-  function outFileName(entry){
-    return entry.name.replace(/\.csv$/i, "") + ".gpx";
-  }
-
-  function buildOutputRow(entry){
-    const row = document.createElement("div");
-    row.className = "outfile";
-
-    const name = document.createElement("div");
-    name.className = "name";
-    name.textContent = outFileName(entry);
-
-    const stats = document.createElement("div");
-    stats.className = "stats";
-    stats.textContent = `${entry.stats.valid} pts · ${entry.stats.waypoints} marks`;
-
-    const link = document.createElement("a");
-    link.className = "dl";
-    link.textContent = "Download";
-    link.href = URL.createObjectURL(new Blob([entry.gpx], { type: "application/gpx+xml" }));
-    link.download = outFileName(entry);
-
-    row.appendChild(name);
-    row.appendChild(stats);
-    row.appendChild(link);
-    return row;
-  }
-
-  zipBtn.addEventListener("click", async () => {
-    const zip = new JSZip();
-    files.filter(f => f.gpx).forEach(f => zip.file(outFileName(f), f.gpx));
-    const blob = await zip.generateAsync({ type: "blob" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "drone_tracks_gpx.zip";
-    a.click();
-  });
-
-  render();
-})();
-</script>
