@@ -299,7 +299,51 @@
     .about-banner{ flex-direction: column; text-align: center; }
     .about-text p{ max-width: none; }
   }
+
+  /* ---------- intro modal ---------- */
+  .modal-overlay{
+    position: fixed; inset: 0; background: rgba(16,35,63,0.55);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 999; padding: 20px;
+  }
+  .modal-overlay.hidden{ display: none; }
+  .modal-box{
+    background: #fff; border-radius: 16px; padding: 28px 26px;
+    max-width: 380px; width: 100%; box-shadow: 0 20px 50px rgba(16,35,63,0.25);
+  }
+  .modal-box h3{ font-size: 19px; margin-bottom: 6px; }
+  .modal-sub{ font-size: 13.5px; color: var(--text-dim); margin: 0 0 18px; }
+  .modal-label{ display:block; font-size: 12.5px; font-weight: 600; color: var(--navy); margin: 12px 0 5px; }
+  .modal-box input{
+    width: 100%; border: 1px solid var(--border); border-radius: 8px;
+    padding: 9px 11px; font-size: 13.5px; font-family: var(--body);
+  }
+  .modal-box input:focus{ outline: none; border-color: var(--blue); }
+  .modal-error{ font-size: 12px; color: var(--bad); min-height: 16px; margin-top: 6px; }
+  .modal-submit{ width: 100%; margin-top: 8px; }
+  .modal-skip{
+    text-align: center; font-size: 12.5px; color: var(--text-dim);
+    margin-top: 10px; cursor: pointer; text-decoration: underline;
+  }
 </style>
+
+<div id="introModal" class="modal-overlay">
+  <div class="modal-box">
+    <h3>Welcome to AeroTrack</h3>
+    <p class="modal-sub">Quick intro before you convert — helps us know who's using this in the field.</p>
+
+    <label class="modal-label" for="introEmail">Email</label>
+    <input type="email" id="introEmail" placeholder="you@example.org" required>
+
+    <label class="modal-label" for="introLocation">Project location</label>
+    <input type="text" id="introLocation" placeholder="e.g. Taman Negara, Malaysia" required>
+
+    <div class="modal-error" id="introError"></div>
+
+    <button class="primary modal-submit" id="introSubmit">Continue</button>
+    <div class="modal-skip" id="introSkip">Skip for now</div>
+  </div>
+</div>
 
 <nav class="topnav">
   <div class="brand">
@@ -939,6 +983,55 @@
       a.download = "converted_tracks.zip";
       a.click();
     });
+  });
+})();
+</script>
+
+<script>
+(function(){
+  const modal = document.getElementById("introModal");
+  const emailInput = document.getElementById("introEmail");
+  const locInput = document.getElementById("introLocation");
+  const errorBox = document.getElementById("introError");
+  const submitBtn = document.getElementById("introSubmit");
+  const skipLink = document.getElementById("introSkip");
+
+  if (localStorage.getItem("aerotrack_intro_done")) {
+    modal.classList.add("hidden");
+    return;
+  }
+
+  function isValidEmail(v){
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  }
+
+  function submit(){
+    const email = emailInput.value.trim();
+    const location = locInput.value.trim();
+
+    if (!isValidEmail(email)){
+      errorBox.textContent = "Please enter a valid email.";
+      return;
+    }
+    if (!location){
+      errorBox.textContent = "Please enter a project location.";
+      return;
+    }
+
+    localStorage.setItem("aerotrack_intro_done", "1");
+    localStorage.setItem("aerotrack_user_email", email);
+    localStorage.setItem("aerotrack_project_location", location);
+
+    modal.classList.add("hidden");
+  }
+
+  submitBtn.addEventListener("click", submit);
+  [emailInput, locInput].forEach(inp => {
+    inp.addEventListener("keydown", e => { if (e.key === "Enter") submit(); });
+  });
+  skipLink.addEventListener("click", () => {
+    localStorage.setItem("aerotrack_intro_done", "1");
+    modal.classList.add("hidden");
   });
 })();
 </script>
