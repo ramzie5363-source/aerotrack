@@ -3,7 +3,7 @@
   // TODO: paste your Apps Script Web App URL here (ends in /exec)
   // See backend/README.md for how to get this.
   // ============================================================
-  var TRACKING_ENDPOINT = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
+  var TRACKING_ENDPOINT = "https://script.google.com/macros/s/AKfycbzLbZwZ7RQjGEX1VIfTXGfezuj660R9GuYZnLuSYYNREOzXqnEynry2SHDQdROTtPEziw/exec";
 
   var STORAGE_KEY = "aerotrack_user";
   var SKIP_KEY = "aerotrack_track_skip_until";
