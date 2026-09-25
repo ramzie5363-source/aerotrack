@@ -989,6 +989,9 @@
 
 <script>
 (function(){
+  // Paste your deployed Google Apps Script Web App URL here (ends in /exec).
+  const POPUP_ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbzLbZwZ7RQjGEX1VIfTXGfezuj660R9GuYZnLuSYYNREOzXqnEynry2SHDQdROTtPEziw/exec";
+
   const modal = document.getElementById("introModal");
   const emailInput = document.getElementById("introEmail");
   const locInput = document.getElementById("introLocation");
@@ -1005,6 +1008,21 @@
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
   }
 
+  function sendToBackend(email, location){
+    if (!POPUP_ENDPOINT_URL || POPUP_ENDPOINT_URL.indexOf("YOUR_DEPLOYED") === 0){
+      console.warn("AeroTrack popup: POPUP_ENDPOINT_URL not set, skipping submit.");
+      return;
+    }
+    // Apps Script Web Apps don't return proper CORS headers for a readable
+    // response, so this fires the request without waiting on the result.
+    fetch(POPUP_ENDPOINT_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ email, location })
+    }).catch(err => console.warn("AeroTrack popup submit failed:", err));
+  }
+
   function submit(){
     const email = emailInput.value.trim();
     const location = locInput.value.trim();
@@ -1017,6 +1035,9 @@
       errorBox.textContent = "Please enter a project location.";
       return;
     }
+
+    submitBtn.disabled = true;
+    sendToBackend(email, location);
 
     localStorage.setItem("aerotrack_intro_done", "1");
     localStorage.setItem("aerotrack_user_email", email);
