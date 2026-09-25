@@ -218,11 +218,10 @@
     align-items: center;
     gap: 20px;
     box-shadow: 0 12px 34px rgba(16, 35, 63, 0.06);
-
-  max-width: 1000px;     /* <--- Makes the white box narrower (e.g., change to 700px, 800px, etc.) */
-  width: 100%;          /* <--- Ensures it stays responsive on smaller screens */
-  margin: 0 auto;       /* <--- Centers the box horizontally if max-width is reduced */
-  min-height: 120px;
+    max-width: 1000px;
+    width: 100%;
+    margin: 0 auto;
+    min-height: 120px;
   }
   .support-icon {
     width: 48px;
@@ -538,7 +537,6 @@
         <div class="role">Conservation Tech Enthusiast</div>
         <p>Built as a personal project to solve a real field workflow headache, converting raw DJI drone log data directly into GPX formats ready for SMART integration.</p>
         
-        <!-- Links container stacked vertically -->
         <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 10px;">
           <a class="contact" href="mailto:ramzierosli14@gmail.com">ramzierosli14@gmail.com</a>
           
@@ -734,38 +732,39 @@
     REQUIRED_FIELDS.forEach(field => {
       const label = document.createElement("label");
       label.textContent = fieldLabels[field];
-      const select = document.createElement("select");
-      if (!entry.mapping[field]) select.classList.add("missing");
+      const sel = document.createElement("select");
 
-      const noneOpt = document.createElement("option");
-      noneOpt.value = "";
-      noneOpt.textContent = "— not found —";
-      select.appendChild(noneOpt);
+      const optDefault = document.createElement("option");
+      optDefault.value = "";
+      optDefault.textContent = "-- Select Column --";
+      sel.appendChild(optDefault);
 
       entry.headers.forEach(h => {
         const opt = document.createElement("option");
         opt.value = h;
         opt.textContent = h;
         if (entry.mapping[field] === h) opt.selected = true;
-        select.appendChild(opt);
+        sel.appendChild(opt);
       });
 
-      select.addEventListener("change", () => {
-        entry.mapping[field] = select.value || null;
-        select.classList.toggle("missing", !select.value);
+      if (!entry.mapping[field]) {
+        sel.classList.add("missing");
+        anyMissing = true;
+      }
+
+      sel.addEventListener("change", (e) => {
+        entry.mapping[field] = e.target.value;
         render();
       });
 
-      if (!entry.mapping[field]) anyMissing = true;
-
       grid.appendChild(label);
-      grid.appendChild(select);
+      grid.appendChild(sel);
     });
 
-    if (anyMissing){
+    if (anyMissing) {
       const warn = document.createElement("div");
       warn.className = "warn-inline";
-      warn.textContent = "Pick the matching column above before converting this file.";
+      warn.textContent = "Please map missing columns before proceeding.";
       grid.appendChild(warn);
     }
 
@@ -773,31 +772,173 @@
     return wrap;
   }
 
-  function nowStamp(){
-    const d = new Date();
-    const p = (n) => String(n).padStart(2, "0");
-    return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
-  }
+  convertBtn.addEventListener("click", () => {
+    consoleBox.innerHTML = "";
+    outputsList.innerHTML = "";
+    outputStep.style.display = "block";
+    
+    let processed = 0;
+    files.forEach(entry => {
+      log(`Processing ${entry.name}...`, "l-dim");
+      const result = convertToGPX(entry);
+      if (result.success) {
+        entry.gpx = result.gpx;
+        entry.stats = result.stats;
+        log(`✓ Successfully converted ${entry.name} (${result.stats.trackPoints} points, ${result.stats.waypoints} waypoints)`, "l-ok");
+        addOutputFile(entry);
+        processed++;
+      } else {
+        log(`✗ Error processing ${entry.name}: ${result.error}`, "l-err");
+      }
+    });
 
-  function log(msg, cls){
+    if (processed > 1) {
+      zipRow.style.display = "block";
+    } else {
+      zipRow.style.display = "none";
+    }
+
+    setStatus("Conversion Complete", "ready");
+  });
+
+  function log(msg, type) {
+    const time = new Date().toLocaleTimeString();
     const line = document.createElement("div");
-    const ts = document.createElement("span");
-    ts.className = "ts";
-    ts.textContent = `[${nowStamp()}] `;
-    line.appendChild(ts);
-    const body = document.createElement("span");
-    if (cls) body.className = cls;
-    body.textContent = msg;
-    line.appendChild(body);
+    line.innerHTML = `<span class="ts">[${time}]</span> <span class="${type}">${msg}</span>`;
     consoleBox.appendChild(line);
     consoleBox.scrollTop = consoleBox.scrollHeight;
   }
 
-  function pad(n){ return String(n).padStart(2, "0"); }
+  function convertToGPX(entry) {
+    try {
+      const applyPm = el("pmCorrection").checked;
+      const photoCol = photoColInput.value.trim().toLowerCase();
 
-  function parseDateTimeLocal(dateStr, timeStr){
-    if (!dateStr || !timeStr) return null;
-    const dParts = String(dateStr).trim().split(/[-/]/).map(s => parseInt(s, 10));
-    if (dParts.length < 3 || dParts.some(isNaN)) return null;
-    let y, m, d;
-    if (dParts[0] > 31){ y = dParts[0]; m = dParts[1]; d = dParts[2]; }
+      let trackPoints = "";
+      let waypoints = "";
+      let tpCount = 0;
+      let wpCount = 0;
+
+      entry.rows.forEach(row => {
+        const lat = parseFloat(row[entry.mapping.lat]);
+        const lon = parseFloat(row[entry.mapping.lon]);
+        const rawDate = row[entry.mapping.date];
+        const rawTime = row[entry.mapping.time];
+
+        if (isNaN(lat) || isNaN(lon) || !rawDate || !rawTime) return;
+
+        let formattedIso = formatIsoTime(rawDate, rawTime, applyPm);
+
+        trackPoints += `      <trkpt lat="${lat}" lon="${lon}">\n`;
+        if (formattedIso) trackPoints += `        <time>${formattedIso}</time>\n`;
+        trackPoints += `      </trkpt>\n`;
+        tpCount++;
+
+        if (photoCol && row[photoCol]) {
+          const photoVal = String(row[photoCol]).toLowerCase();
+          if (["1", "true", "yes"].includes(photoVal)) {
+            waypoints += `  <wpt lat="${lat}" lon="${lon}">\n`;
+            if (formattedIso) waypoints += `    <time>${formattedIso}</time>\n`;
+            waypoints += `    <name>Photo</name>\n`;
+            waypoints += `  </wpt>\n`;
+            wpCount++;
+          }
+        }
+      });
+
+      const gpxContent = `<?xml version="1.0" encoding="UTF-8"?>\n` +
+        `<gpx version="1.1" creator="AeroTrack" xmlns="http://www.topografix.com/GPX/1/1">\n` +
+        `  <metadata>\n` +
+        `    <name>${escapeXml(entry.name)}</name>\n` +
+        `  </metadata>\n` +
+        waypoints +
+        `  <trk>\n` +
+        `    <name>${escapeXml(entry.name)}</name>\n` +
+        `    <trkseg>\n` +
+        trackPoints +
+        `    </trkseg>\n` +
+        `  </trk>\n` +
+        `</gpx>`;
+
+      return { success: true, gpx: gpxContent, stats: { trackPoints: tpCount, waypoints: wpCount } };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  function formatIsoTime(dateStr, timeStr, applyPm) {
+    try {
+      let [year, month, day] = dateStr.split(/[-/]/);
+      let [hour, minute, second] = timeStr.split(":");
+
+      if (!year || !month || !day || !hour || !minute) return null;
+
+      let h = parseInt(hour, 10);
+      if (applyPm && h <= 11) {
+        h += 12;
+      }
+
+      const pad = (n) => String(n).padStart(2, "0");
+      return `${year}-${pad(month)}-${pad(day)}T${pad(h)}:${pad(minute)}:${pad(parseFloat(second) || 0)}Z`;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function escapeXml(unsafe) {
+    return unsafe.replace(/[<>&'"]/g, (c) => {
+      switch (c) {
+        case '<': return '&lt;';
+        case '>': return '&gt;';
+        case '&': return '&amp;';
+        case '\'': return '&apos;';
+        case '"': return '&quot;';
+      }
+    });
+  }
+
+  function addOutputFile(entry) {
+    const row = document.createElement("div");
+    row.className = "outfile";
+
+    const outName = entry.name.replace(/\.csv$/i, "") + ".gpx";
+
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = outName;
+
+    const stats = document.createElement("div");
+    stats.className = "stats";
+    stats.textContent = `${entry.stats.trackPoints} pts, ${entry.stats.waypoints} wpts`;
+
+    const dl = document.createElement("a");
+    dl.className = "dl";
+    dl.textContent = "Download";
+    dl.download = outName;
+    const blob = new Blob([entry.gpx], { type: "application/gpx+xml" });
+    dl.href = URL.createObjectURL(blob);
+
+    row.appendChild(name);
+    row.appendChild(stats);
+    row.appendChild(dl);
+    outputsList.appendChild(row);
+  }
+
+  zipBtn.addEventListener("click", () => {
+    const zip = new JSZip();
+    files.forEach(f => {
+      if (f.gpx) {
+        const outName = f.name.replace(/\.csv$/i, "") + ".gpx";
+        zip.file(outName, f.gpx);
+      }
+    });
+
+    zip.generateAsync({ type: "blob" }).then(content => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(content);
+      a.download = "converted_tracks.zip";
+      a.click();
+    });
+  });
+})();
+</script>
